@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { waitUntil } from '@vercel/functions';
 import express from 'express';
 import cors from 'cors';
 import { rateLimit } from 'express-rate-limit';
@@ -26,7 +27,7 @@ const anthropic = new Anthropic({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     cb(null, allowed.includes(file.mimetype));
@@ -91,35 +92,6 @@ app.post('/api/support', async (req, res) => {
   }
 });
 
-app.post('/api/warehouses', async (req, res) => {
-  try {
-    const { name, address, country, region, city, userId } = req.body;
-    const { data, error } = await supabase
-      .from('warehouses')
-      .insert({ name, address, country, region, city, user_id: userId })
-      .select()
-      .single();
-    if (error) throw error;
-    res.status(201).json(data);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-app.get('/api/warehouses/:userId', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('warehouses')
-      .select('*, layout_analyses(count)')
-      .eq('user_id', req.params.userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
 app.post('/api/analyses', upload.single('image'), async (req, res) => {
   try {
     const { warehouseId, userId } = req.body;
@@ -150,9 +122,8 @@ app.post('/api/analyses', upload.single('image'), async (req, res) => {
       .single();
     if (analysisError) throw analysisError;
 
+    waitUntil(processAnalysis(analysis.id, urlData.publicUrl, file.mimetype).catch(console.error));
     res.json({ analysisId: analysis.id, imageUrl: urlData.publicUrl });
-
-    processAnalysis(analysis.id, urlData.publicUrl, file.mimetype).catch(console.error);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -201,7 +172,7 @@ Requisitos:
 }`;
 
     const msg = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-5',
       max_tokens: 2500,
       temperature: 0.1,
       timeout: 90000,
@@ -221,7 +192,7 @@ Requisitos:
     } catch (parseErr) {
       console.warn('Primer parseo falló, reintentando:', parseErr.message);
       const retry = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-5',
         max_tokens: 2500,
         temperature: 0.1,
         timeout: 60000,
@@ -342,6 +313,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend corriendo en http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+        app.listen(PORT, () => {
+          console.log(`Backend corriendo en http://localhost:${PORT}`);
+        });
+      }
+      export default app;

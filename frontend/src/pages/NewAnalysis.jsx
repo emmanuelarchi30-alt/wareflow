@@ -41,8 +41,8 @@ export function NewAnalysis() {
     if (!selectedFile.type.match(/^image\/(jpeg|png|webp)$/)) {
       return toast.error('Formato no válido. Usa JPG, PNG o WebP');
     }
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      return toast.error('Archivo muy grande. Máx. 10MB');
+    if (selectedFile.size > 4 * 1024 * 1024) {
+      return toast.error('La imagen no puede superar 4 MB');
     }
     setFile(selectedFile);
     setPreview(URL.createObjectURL(selectedFile));
@@ -124,7 +124,7 @@ export function NewAnalysis() {
             <GlassPanel className="p-8">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-primary mb-2">Subir layout del almacén</h2>
-                <p className="text-secondary">Arrastra una foto o selecciónala. Formatos: JPG, PNG, WebP (máx. 10MB)</p>
+                <p className="text-secondary">Arrastra una foto o selecciónala. Formatos: JPG, PNG, WebP (máx. 4MB)</p>
               </div>
 
               <div
